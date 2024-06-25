@@ -1,14 +1,20 @@
 {
   "name": "ngxs-migrate",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "build:ngxs-migrate": "npm run compile:ngxs-migrate && npm run copy:package && npm run postbuild:ngxs-migrate",
+    "compile:ngxs-migrate": "tsc -p migrate-select/tsconfig.json",
+    "copy:package": "copyfiles migrate-select/package.json migrate-select/README.md dist/",
+    "postbuild:ngxs-migrate": "copyfiles migrate-select/src/*/schema.json migrate-select/src/collection.json dist/ && npm link ./dist/migrate-select/"
   },
-  "private": true,
+  "workspaces": [
+    "migrate-select"
+  ],
   "dependencies": {
     "@angular/animations": "^18.0.0",
     "@angular/common": "^18.0.0",
@@ -18,6 +24,8 @@
     "@angular/platform-browser": "^18.0.0",
     "@angular/platform-browser-dynamic": "^18.0.0",
     "@angular/router": "^18.0.0",
+    "@ngxs/store": "^18.0.0",
+    "copyfiles": "^2.4.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.3"
@@ -33,6 +41,7 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "ng-packagr": "^18.0.0",
     "typescript": "~5.4.2"
   }
 }

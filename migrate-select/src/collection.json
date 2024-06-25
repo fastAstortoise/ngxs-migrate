@@ -1,0 +1,10 @@
+{
+  "$schema": "../node_modules/@angular-devkit/schematics/collection-schema.json",
+  "schematics": {
+    "select": {
+      "description": "Remove @Select and converts it to this.{store}.select(....).",
+      "factory": "./migrate-select/index#ngxsSelectMigrate",
+      "schema": "./migrate-select/schema.json"
+    }
+  }
+}

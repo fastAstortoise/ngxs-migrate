@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "$id": "SchematicsNgsxSelectMigrate",
+  "title":  "Ngxs Select Migration Schema",
+  "type": "object",
+  "properties": {
+    "project": {
+      "type": "string",
+      "description": "Enter the project name to migrate."
+    },
+    "path": {
+      "type": "string",
+      "description": "Enter the path to migrate."
+    },
+    "format": {
+      "type": "boolean",
+      "description": "Do you want to run Prettier to format file?"
+    }
+  }
+}
+
