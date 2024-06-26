@@ -10,6 +10,7 @@
   ],
   "author": "Gagandeep Sidhu",
   "license": "MIT",
+  "repository": "https://github.com/fastAstortoise/ngxs-migrate.git",
   "schematics": "./src/collection.json",
   "dependencies": {
     "@angular-devkit/core": "^18.0.5",

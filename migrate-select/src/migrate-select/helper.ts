@@ -13,7 +13,7 @@ export class Helper {
       const storeImport = sourceFile.getImportDeclaration((importDecl) => {
         return importDecl.getModuleSpecifierValue() === '@ngxs/store';
       });
-      storeImport!.addNamedImport('Store');
+      storeImport?.addNamedImport('Store');
     }
     const classes = sourceFile.getClasses();
     for (const clazz of classes) {

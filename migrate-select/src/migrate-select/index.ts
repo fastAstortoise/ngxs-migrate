@@ -10,7 +10,7 @@ import { existsSync, statSync } from 'node:fs';
 import { relative } from 'node:path';
 import { Helper } from './helper';
 
-const regex = /inject\(\s*Store\s*\)/g;
+const regex = /inject\(\s*Store\s*\)/;
 
 async function runMigration(
   tree: Tree,
