@@ -8,6 +8,7 @@ import {
 import { virtualFs, workspaces } from '@angular-devkit/core';
 import { existsSync, statSync } from 'node:fs';
 import { relative } from 'node:path';
+import { Helper } from './helper';
 
 const regex = /inject\(\s*Store\s*\)/g;
 
@@ -22,6 +23,9 @@ async function runMigration(
   let filesChanged: string[] = [];
   for (const sourceFile of sourceFiles) {
     const filePath = relative(basePath, sourceFile.getFilePath());
+    let storeIdentifierUsed = '';
+    Helper.addConstructor(sourceFile);
+
     const classes = sourceFile.getClasses();
     let foundChangeInAtLeastOneClass = false;
     for (const clazz of classes) {
@@ -32,7 +36,6 @@ async function runMigration(
         continue;
       }
       foundChangeInAtLeastOneClass = true;
-      let storeIdentifierUsed = '';
       clazz.getConstructors().forEach((instance) => {
         const storeFound = instance
           .getParameters()
@@ -66,7 +69,7 @@ async function runMigration(
               hasOverrideKeyword,
               initializer: (writer: CodeBlockWriter) => {
                 writer.write(
-                  `this.${storeIdentifierUsed}.select(${selectArg});`
+                  `this.${storeIdentifierUsed}.select(${selectArg})`
                 );
               },
             });
