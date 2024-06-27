@@ -1,14 +1,10 @@
-import { CodeBlockWriter, Node, Project, ts } from 'ts-morph';
+import {CodeBlockWriter, Node, Project, ts} from 'ts-morph';
 import * as prettier from 'prettier';
-import {
-  SchematicContext,
-  SchematicsException,
-  Tree,
-} from '@angular-devkit/schematics';
-import { virtualFs, workspaces } from '@angular-devkit/core';
-import { existsSync, statSync } from 'node:fs';
-import { relative } from 'node:path';
-import { Helper } from './helper';
+import {SchematicContext, SchematicsException, Tree,} from '@angular-devkit/schematics';
+import {virtualFs, workspaces} from '@angular-devkit/core';
+import {existsSync, statSync} from 'node:fs';
+import {relative} from 'node:path';
+import {Helper} from './helper';
 
 const regex = /inject\(\s*Store\s*\)/;
 
@@ -140,14 +136,17 @@ export function ngxsSelectMigrate(_options: {
       );
     }
     let path = null;
-    const host = createHost(tree);
-    const { workspace } = await workspaces.readWorkspace('/', host);
-    const ngProject = workspace.projects.get(_options.path);
 
-    if (ngProject) {
-      const projectType =
-        ngProject.extensions.projectType === 'application' ? 'app' : 'lib';
-      path = `${ngProject.sourceRoot}/${projectType}`;
+    if (_options.project) {
+      const host = createHost(tree);
+      const { workspace } = await workspaces.readWorkspace('/', host);
+      const ngProject = workspace.projects.get(_options.project);
+
+      if (ngProject) {
+        const projectType =
+          ngProject.extensions.projectType === 'application' ? 'app' : 'lib';
+        path = `${ngProject.sourceRoot}/${projectType}`;
+      }
     }
 
     if (existsSync(_options.path) && statSync(_options.path).isDirectory()) {
@@ -156,7 +155,7 @@ export function ngxsSelectMigrate(_options: {
 
     if (!path) {
       throw new SchematicsException(
-        `Can not find project name or directory path provided. Project/Path provided : ${_options.project} ${_options.path}`
+        `Can not find project name or directory path provided. Project/Path provided : ${_options.project || ''} ${_options.path || ''}`
       );
     }
 
