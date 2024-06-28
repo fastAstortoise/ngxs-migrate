@@ -1,6 +1,6 @@
 {
   "name": "@sahaaye/ngxs-migrate",
-  "version": "18.0.0",
+  "version": "18.0.4",
   "description": "A schematic to update code automatically for ngxs @Select migration",
   "keywords": [
     "ngxs",

@@ -1,12 +1,16 @@
-import {CodeBlockWriter, Node, Project, ts} from 'ts-morph';
+import { Node, Project, ts } from 'ts-morph';
 import * as prettier from 'prettier';
-import {SchematicContext, SchematicsException, Tree,} from '@angular-devkit/schematics';
-import {virtualFs, workspaces} from '@angular-devkit/core';
-import {existsSync, statSync} from 'node:fs';
-import {relative} from 'node:path';
-import {Helper} from './helper';
+import {
+  SchematicContext,
+  SchematicsException,
+  Tree,
+} from '@angular-devkit/schematics';
+import { virtualFs, workspaces } from '@angular-devkit/core';
+import { existsSync, statSync } from 'node:fs';
+import { relative } from 'node:path';
+import { Helper } from './helper';
 
-const regex = /inject\(\s*Store\s*\)/;
+const injectRegex = /inject\(\s*Store\s*\)/;
 
 async function runMigration(
   tree: Tree,
@@ -18,13 +22,15 @@ async function runMigration(
   const basePath = process.cwd();
   let filesChanged: string[] = [];
   for (const sourceFile of sourceFiles) {
-    const filePath = relative(basePath, sourceFile.getFilePath());
-    let storeIdentifierUsed = '';
-    Helper.addConstructor(sourceFile);
+    //this will add import and constructor to all the file it searches,
+    // but they won't be overwritten unless there is a change in the file
+    Helper.addImportAndConstructor(sourceFile);
 
+    const filePath = relative(basePath, sourceFile.getFilePath());
     const classes = sourceFile.getClasses();
     let foundChangeInAtLeastOneClass = false;
     for (const clazz of classes) {
+      let storeIdentifierUsed = '';
       const validDecorator = clazz
         .getDecorators()
         .find((value) => ['Component', 'Directive'].includes(value.getName()));
@@ -37,7 +43,7 @@ async function runMigration(
           .getParameters()
           .find((v) => v.getStructure().type === 'Store');
         if (storeFound?.getScope()) {
-          storeIdentifierUsed = storeFound.getName();
+          storeIdentifierUsed = storeFound.getName().trim();
         }
       });
       clazz.forEachChild((node: Node<ts.Node>) => {
@@ -45,7 +51,7 @@ async function runMigration(
           if (
             !storeIdentifierUsed &&
             node.hasInitializer() &&
-            regex.test(node.getInitializer()!.getText())
+            injectRegex.test(node.getInitializer()!.getText())
           ) {
             storeIdentifierUsed = node.getName();
           }
@@ -63,11 +69,7 @@ async function runMigration(
               scope,
               type,
               hasOverrideKeyword,
-              initializer: (writer: CodeBlockWriter) => {
-                writer.write(
-                  `this.${storeIdentifierUsed}.select(${selectArg})`
-                );
-              },
+              initializer: `this.${storeIdentifierUsed}.select(${selectArg})`,
             });
             node.replaceWithText(propertyTobeAdded.print());
             propertyTobeAdded.remove();
@@ -77,20 +79,9 @@ async function runMigration(
     }
     if (foundChangeInAtLeastOneClass) {
       filesChanged.push(filePath);
-      const hasSelectImport = sourceFile.getImportDeclaration((impDec) => {
-        return (
-          impDec.getModuleSpecifierValue() === '@ngxs/store' &&
-          impDec.getNamedImports().some((value) => value.getName() === 'Select')
-        );
-      });
-      if (hasSelectImport) {
-        const selectImport = hasSelectImport
-          .getNamedImports()
-          .find((v) => v.getName() === 'Select');
-        selectImport?.remove();
-      }
+      Helper.removeImport(sourceFile);
       let textToWrite = sourceFile.getText();
-      if (formatFile && prettier) {
+      if (formatFile) {
         const config = await prettier.resolveConfig(sourceFile.getFilePath());
         textToWrite = await prettier.format(sourceFile.getText(), {
           ...config,
@@ -136,17 +127,14 @@ export function ngxsSelectMigrate(_options: {
       );
     }
     let path = null;
+    const host = createHost(tree);
+    const { workspace } = await workspaces.readWorkspace('/', host);
+    const ngProject = workspace.projects.get(_options.project);
 
-    if (_options.project) {
-      const host = createHost(tree);
-      const { workspace } = await workspaces.readWorkspace('/', host);
-      const ngProject = workspace.projects.get(_options.project);
-
-      if (ngProject) {
-        const projectType =
-          ngProject.extensions.projectType === 'application' ? 'app' : 'lib';
-        path = `${ngProject.sourceRoot}/${projectType}`;
-      }
+    if (ngProject) {
+      const projectType =
+        ngProject.extensions.projectType === 'application' ? 'app' : 'lib';
+      path = `${ngProject.sourceRoot}/${projectType}`;
     }
 
     if (existsSync(_options.path) && statSync(_options.path).isDirectory()) {
@@ -155,16 +143,20 @@ export function ngxsSelectMigrate(_options: {
 
     if (!path) {
       throw new SchematicsException(
-        `Can not find project name or directory path provided. Project/Path provided : ${_options.project || ''} ${_options.path || ''}`
+        `Can not find project name or directory path provided. Project/Path provided :${_options.project || ''}${_options.path || ''}`
       );
     }
 
     const filesChanged = await runMigration(tree, path, _options.format);
 
-    if (filesChanged.length) {
-      _context.logger.info(
-        'Automated migration has completed. Please verify your build and files.'
+    if (filesChanged.length === 0) {
+      throw new SchematicsException(
+        `Could not find any files to migrate under the project/Path provided ${_options.project || ''}${_options.path || ''}. Cannot run the migration.`
       );
     }
+
+    _context.logger.info(
+      `Automated migration has completed. Files migrated ${filesChanged.length} Please verify your build and files.`
+    );
   };
 }
