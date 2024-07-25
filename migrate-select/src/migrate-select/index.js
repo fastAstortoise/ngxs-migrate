@@ -16,7 +16,8 @@ const schematics_1 = require("@angular-devkit/schematics");
 const core_1 = require("@angular-devkit/core");
 const node_fs_1 = require("node:fs");
 const node_path_1 = require("node:path");
-const regex = /inject\(\s*Store\s*\)/g;
+const helper_1 = require("./helper");
+const injectRegex = /inject\(\s*Store\s*\)/;
 function runMigration(tree, dir, formatFile) {
     return __awaiter(this, void 0, void 0, function* () {
         const project = new ts_morph_1.Project();
@@ -24,10 +25,14 @@ function runMigration(tree, dir, formatFile) {
         const basePath = process.cwd();
         let filesChanged = [];
         for (const sourceFile of sourceFiles) {
+            //this will add import and constructor to all the file it searches,
+            // but they won't be overwritten unless there is a change in the file
+            helper_1.Helper.addImportAndConstructor(sourceFile);
             const filePath = (0, node_path_1.relative)(basePath, sourceFile.getFilePath());
             const classes = sourceFile.getClasses();
             let foundChangeInAtLeastOneClass = false;
             for (const clazz of classes) {
+                let storeIdentifierUsed = '';
                 const validDecorator = clazz
                     .getDecorators()
                     .find((value) => ['Component', 'Directive'].includes(value.getName()));
@@ -35,20 +40,19 @@ function runMigration(tree, dir, formatFile) {
                     continue;
                 }
                 foundChangeInAtLeastOneClass = true;
-                let storeIdentifierUsed = '';
                 clazz.getConstructors().forEach((instance) => {
                     const storeFound = instance
                         .getParameters()
                         .find((v) => v.getStructure().type === 'Store');
                     if (storeFound === null || storeFound === void 0 ? void 0 : storeFound.getScope()) {
-                        storeIdentifierUsed = storeFound.getName();
+                        storeIdentifierUsed = storeFound.getName().trim();
                     }
                 });
                 clazz.forEachChild((node) => {
                     if (ts_morph_1.Node.isPropertyDeclaration(node)) {
                         if (!storeIdentifierUsed &&
                             node.hasInitializer() &&
-                            regex.test(node.getInitializer().getText())) {
+                            injectRegex.test(node.getInitializer().getText())) {
                             storeIdentifierUsed = node.getName();
                         }
                         const selectDecorator = node.getDecorator('Select');
@@ -64,9 +68,7 @@ function runMigration(tree, dir, formatFile) {
                                 scope,
                                 type,
                                 hasOverrideKeyword,
-                                initializer: (writer) => {
-                                    writer.write(`this.${storeIdentifierUsed}.select(${selectArg});`);
-                                },
+                                initializer: `this.${storeIdentifierUsed}.select(${selectArg})`,
                             });
                             node.replaceWithText(propertyTobeAdded.print());
                             propertyTobeAdded.remove();
@@ -76,18 +78,9 @@ function runMigration(tree, dir, formatFile) {
             }
             if (foundChangeInAtLeastOneClass) {
                 filesChanged.push(filePath);
-                const hasSelectImport = sourceFile.getImportDeclaration((impDec) => {
-                    return (impDec.getModuleSpecifierValue() === '@ngxs/store' &&
-                        impDec.getNamedImports().some((value) => value.getName() === 'Select'));
-                });
-                if (hasSelectImport) {
-                    const selectImport = hasSelectImport
-                        .getNamedImports()
-                        .find((v) => v.getName() === 'Select');
-                    selectImport === null || selectImport === void 0 ? void 0 : selectImport.remove();
-                }
+                helper_1.Helper.removeImport(sourceFile);
                 let textToWrite = sourceFile.getText();
-                if (formatFile && prettier) {
+                if (formatFile) {
                     const config = yield prettier.resolveConfig(sourceFile.getFilePath());
                     textToWrite = yield prettier.format(sourceFile.getText(), Object.assign(Object.assign({}, config), { parser: 'typescript' }));
                 }
@@ -133,7 +126,7 @@ function ngxsSelectMigrate(_options) {
         let path = null;
         const host = createHost(tree);
         const { workspace } = yield core_1.workspaces.readWorkspace('/', host);
-        const ngProject = workspace.projects.get(_options.path);
+        const ngProject = workspace.projects.get(_options.project);
         if (ngProject) {
             const projectType = ngProject.extensions.projectType === 'application' ? 'app' : 'lib';
             path = `${ngProject.sourceRoot}/${projectType}`;
@@ -142,12 +135,13 @@ function ngxsSelectMigrate(_options) {
             path = _options.path;
         }
         if (!path) {
-            throw new schematics_1.SchematicsException(`Can not find project name or directory path provided. Project/Path provided : ${_options.project} ${_options.path}`);
+            throw new schematics_1.SchematicsException(`Can not find project name or directory path provided. Project/Path provided :${_options.project || ''}${_options.path || ''}`);
         }
         const filesChanged = yield runMigration(tree, path, _options.format);
-        if (filesChanged.length) {
-            _context.logger.info('Automated migration has completed. Please verify your build and files.');
+        if (filesChanged.length === 0) {
+            throw new schematics_1.SchematicsException(`Could not find any files to migrate under the project/Path provided ${_options.project || ''}${_options.path || ''}. Cannot run the migration.`);
         }
+        _context.logger.info(`Automated migration has completed. Files migrated ${filesChanged.length} Please verify your build and files.`);
     });
 }
 exports.ngxsSelectMigrate = ngxsSelectMigrate;
