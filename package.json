@@ -7,11 +7,11 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "pack:ngxs-migrate": "npm pack dist/migrate-select",
-    "build:ngxs-migrate": "npm run compile:ngxs-migrate && npm run copy:package && npm run postbuild:ngxs-migrate",
+    "pack:ngxs-migrate": "npm pack dist/migrate-select/",
+    "build:ngxs-migrate": "npm version patch --workspace migrate-select && npm run compile:ngxs-migrate && npm run copy:package && npm run postbuild:ngxs-migrate",
     "compile:ngxs-migrate": "tsc -p migrate-select/tsconfig.json",
     "copy:package": "copyfiles migrate-select/package.json migrate-select/README.md dist/",
-    "postbuild:ngxs-migrate": "copyfiles migrate-select/src/*/schema.json migrate-select/src/collection.json dist/ && npm link ./dist/migrate-select/"
+    "postbuild:ngxs-migrate": "copyfiles migrate-select/src/*/schema.json migrate-select/src/collection.json dist/"
   },
   "workspaces": [
     "migrate-select"
@@ -26,6 +26,7 @@
     "@angular/platform-browser-dynamic": "^18.0.0",
     "@angular/router": "^18.0.0",
     "@ngxs/store": "^18.0.0",
+    "@sahaaye/ngxs-migrate-s": "file:sahaaye-ngxs-migrate-18.2.3.tgz",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.3"
@@ -35,6 +36,7 @@
     "@angular/cli": "^18.0.4",
     "@angular/compiler-cli": "^18.0.0",
     "@types/jasmine": "~5.1.0",
+    "copyfiles": "^2.4.1",
     "jasmine-core": "~5.1.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
@@ -42,7 +44,6 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
     "ng-packagr": "^18.0.0",
-    "typescript": "~5.4.2",
-    "copyfiles": "^2.4.1"
+    "typescript": "~5.4.2"
   }
 }

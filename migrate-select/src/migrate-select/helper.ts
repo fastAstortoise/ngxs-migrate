@@ -2,6 +2,7 @@ import { Scope, SourceFile } from 'ts-morph';
 
 export class Helper {
   static addImportAndConstructor(sourceFile: SourceFile) {
+    sourceFile.fixUnusedIdentifiers();
     const hasStoreImport = sourceFile.getImportDeclaration((impDec) => {
       return (
         impDec.getModuleSpecifierValue() === '@ngxs/store' &&
